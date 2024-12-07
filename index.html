@@ -1,0 +1,203 @@
+<script src="transformations.js"></script>
+<script src="fractals.js"></script>
+<script src="shader.js"></script>
+<script src="input.js"></script>
+<script src="index.js"></script>
+<body style="overflow: hidden; margin:0px" onload="initCanvas();">
+	<script>
+		let df = 1;
+		let init = false;
+		function initCanvas() {
+			document.getElementById('rm-canvas').width = window.innerWidth;
+			document.getElementById('rm-canvas').height = window.innerHeight;
+			document.getElementById('rm-canvas').style.width = window.innerWidth;
+			document.getElementById('rm-canvas').style.height = window.innerHeight;
+			maxDistance = 100.0;
+			minDistance = 0.001;
+			dynamicMinDistance = true;
+			maxSteps = 100;
+			shadows = true;
+			setIterations(10);
+			setPower(10);
+			setBailout(50);
+			setColorIterations(10);
+			spin = false;
+			reflections = 0;
+			reflectness = 0.8;
+			previewScale = 2.0;
+			calcNormal = false;
+			pauseWhenNotMoving = true;
+			shadowStrength = 0.6;
+			//lightFunction = 'vec3(uPosition.x, -15, uPosition.z)';
+			//lightFunction = 'vec3(uPosition - vec3(0.25) * mat3(rotateXaxis(mod(uTime / 2.0, 2.0 * PI))))';
+			lightFunction = 'vec3(uPosition - 0.5)';
+			//lightFunction = 'vec3(uPosition - 0.5*sin(uTime))';
+			//lightDirFunction = 'vec3(0, 1, 0)';
+			colorFunction = DEFAULT_FRACTAL_COLOR + '+ 0.1';
+			document.getElementById("colorFunc").value = colorFunction;
+			skyColorFunction = 'skyColor(uv, reflection, rayDir)';
+			//cameraPosition = {x: -10, y: 7, z: -10};
+			//cameraRotation = {x: 30, y: 45, z: 0};
+			//doEveryFrame = () => cameraPosition.x += 0.005;
+			resetCamera();
+			extra = `
+#define VOL_ITERATIONS 20
+#define FORM_U_PARAM 0.53
+#define VOL_STEPS 5
+#define STEP_SIZE 0.2
+#define ZOOM 1.0
+#define TILE 0.85
+#define BRIGHTNESS 0.0015
+#define DARK_MATTER 0.3
+#define DIST_FADING 0.73
+#define SATURATION 0.85
+
+vec3 space(vec2 uv, float time, float speed) {
+	uv -= 0.5;
+	vec3 dir = vec3(uv * ZOOM, 1.0);
+	time = time * speed + 0.25;
+	vec3 from = vec3(1.0, 0.5, 0.5);
+	from += vec3(time * 2.0, time, -2.0);
+	float s = 0.1, fade = 1.0;
+	vec3 v = vec3(0.0);
+	for (int r = 0; r < VOL_STEPS; r++) {
+		vec3 p = from + s * dir * 0.5;
+		p = abs(vec3(TILE) - mod(p, vec3(TILE * 2.0)));
+		float pa,a = pa = 0.0;
+		for (int i = 0; i < VOL_ITERATIONS; i++) { 
+			p = abs(p) / dot(p, p) - FORM_U_PARAM;
+			a += abs(length(p) - pa);
+			pa = length(p);
+		}
+		float dm = max(0.0, DARK_MATTER - a * a * 0.001);
+		a *= a*a;
+		if(r > 6) fade *= 1.0 - dm;
+		v += fade;
+		v += vec3(s, s*s, s*s*s*s) * a * BRIGHTNESS * fade;
+		fade *= DIST_FADING;
+		s += STEP_SIZE;
+	}
+	v = mix(vec3(length(v)), v, SATURATION);
+	return v * 0.01;	
+}	
+vec3 skyColor(vec2 uv, int reflection, vec3 rayDir) {
+	uv.y += 0.25;
+	float y = reflection == 0 ? (-uv.y + uRotation.x - length(uv - vec2(0.0, -1.0)) / 4.0) : (-rayDir.y - length(uv) / 4.0);
+	return exp2(y / vec3(0.1, 0.3, 0.6)) - vec3(0, 0.4, 0.4)
+			+ space(reflection == 0 ? vec2(uv.x + uRotation.y, uv.y - uRotation.x) : -vec2(uv.x - uRotation.y, uv.y + uRotation.x), uTime, 0.001);
+}
+`;
+			if (init) {
+				destroy();
+			}
+			compile(getDf());
+			init = true;
+		}
+
+		function getDf() {
+			if (df === 1) {
+				return SPHERE_SPONGE_GLSL;
+			}
+			if (df === 2) {
+				return MANDELBOX_GLSL;
+			}
+			if (df === 3) {
+				return MANDELBULB_GLSL;
+			}
+		}
+
+		function resetCamera() {
+			if (df === 2) {
+				cameraPosition = {x: -10, y: 7, z: -10};
+				cameraRotation = {x: 30, y: 45, z: 0};
+			} else {
+				cameraPosition = {x: -12, y: 7, z: 11};
+				cameraRotation = {x: 0, y: 90, z: 0};
+			}
+		}
+
+		function selectFractal(ev) {
+			document.getElementById("select-mandelbulb").style.backgroundColor = null;
+			document.getElementById("select-mandelbox").style.backgroundColor = null;
+			document.getElementById("select-sponge").style.backgroundColor = null;
+			ev.target.style.backgroundColor = "gray";
+			switch (ev.target.id) {
+				case "select-mandelbulb": {
+					df = 3;
+					break;
+				};
+				case "select-mandelbox": {
+					df = 2;
+					break;
+				};
+				case "select-sponge": {
+					df = 1;
+					break;
+				}
+			}
+			destroy();
+			compile(getDf());
+			resetCamera();
+		}
+
+		function selectIterations(ev) {
+			const iter = ev.target.value;
+			document.getElementById("iterations").innerText = "Iterations: " + iter;
+			setIterations(iter);
+			destroy();
+			compile(getDf());
+		}
+
+		function updateLightFunc() {
+			const lightFunc = document.getElementById("lightFunc").value;
+			lightFunction = lightFunc;
+			destroy();
+			compile(getDf());
+		}
+
+		function updateColorFunc() {
+			const colorFunc = document.getElementById("colorFunc").value;
+			colorFunction = colorFunc;
+			destroy();
+			compile(getDf());
+		}
+
+	</script>
+	<canvas id="rm-canvas"></canvas>
+	<div style="position: absolute; top: 16px; left: 16px; display: flex; flex-direction: column; background-color: rgba(0.5, 0.5, 0.5, 0.5); padding: 8px;">
+		<h5 style="color: white; margin-top: 4px; margin-bottom: 8px;">Type</h5>
+		<div style="display: flex; width: 100%; justify-content: space-evenly;">
+			<button onclick="selectFractal(event)" id="select-sponge" style="background-color: gray;">Sponge</button>
+			<button onclick="selectFractal(event)" id="select-mandelbox">Mandelbox</button>
+			<button onclick="selectFractal(event)" id="select-mandelbulb">Mandelbulb</button>
+		</div>
+		<h5 id="iterations" style="color: white; margin-top: 8px; margin-bottom: 0;">Iterations: 10</h5>
+		<input onchange="selectIterations(event)" type="range" min="3" max="15" value="10" style="width: 100%;">
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<h5 style="color: white; margin: 0;">Reflections</h5>
+			<input onchange="reflections = event.target.checked ? 1 : 0;destroy();compile(getDf())" type="checkbox">
+		</div>
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<h5 style="color: white; margin: 0;">Shadows</h5>
+			<input onchange="shadows = event.target.checked;destroy();compile(getDf())" checked="true" type="checkbox">
+		</div>
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<h5 style="color: white; margin: 0;">Pause when not moving</h5>
+			<input onchange="pauseWhenNotMoving = event.target.checked" checked="true" type="checkbox">
+		</div>
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<h5 style="color: white; margin: 0;">Downscale when moving</h5>
+			<input onchange="previewScale = event.target.checked ? 2 : 1" checked="true" type="checkbox">
+		</div>
+		<h5 style="color: white; margin-top: 8px; margin-bottom: 0;">Light Function</h5>
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<input id="lightFunc" type="text" value="vec3(uPosition - 0.5)" style="flex: 1">
+			<button onclick="updateLightFunc()" style="height: 100%;">Update</button>
+		</div>
+		<h5 style="color: white; margin-top: 8px; margin-bottom: 0;">Color Function</h5>
+		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+			<input id="colorFunc" type="text" value="" style="flex: 1">
+			<button onclick="updateColorFunc()" style="height: 100%;">Update</button>
+		</div>
+	</div>
+</body>
