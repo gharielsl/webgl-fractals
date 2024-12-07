@@ -148,6 +148,14 @@ vec3 skyColor(vec2 uv, int reflection, vec3 rayDir) {
 			compile(getDf());
 		}
 
+		function selectSteps(ev) {
+			const steps = ev.target.value;
+			document.getElementById("steps").innerText = "Steps: " + steps;
+			maxSteps = steps;
+			destroy();
+			compile(getDf());
+		}
+
 		function updateLightFunc() {
 			const lightFunc = document.getElementById("lightFunc").value;
 			lightFunction = lightFunc;
@@ -173,6 +181,8 @@ vec3 skyColor(vec2 uv, int reflection, vec3 rayDir) {
 		</div>
 		<h5 id="iterations" style="color: white; margin-top: 8px; margin-bottom: 0;">Iterations: 10</h5>
 		<input onchange="selectIterations(event)" type="range" min="3" max="15" value="10" style="width: 100%;">
+		<h5 id="steps" style="color: white; margin-top: 8px; margin-bottom: 0;">Steps: 100</h5>
+		<input onchange="selectSteps(event)" type="range" min="10" max="1000" value="100" style="width: 100%;">
 		<div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
 			<h5 style="color: white; margin: 0;">Reflections</h5>
 			<input onchange="reflections = event.target.checked ? 1 : 0;destroy();compile(getDf())" type="checkbox">
