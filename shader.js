@@ -105,8 +105,12 @@ void main() {
 		float distance = rayMarch(reflection > 0 ? cameraPos + normal * (1.5 * minDistance) : cameraPos, rayDir, false, reflection);
 		cameraPos += rayDir * distance;
 		float diffuse = getLight(cameraPos, reflection);
+  
+  		vec3 p = cameraPos;
+    		int reflectionIndex = reflection;
   		vec3 lightPos = #LIGHT_FUNCTION;
 		vec3 lightDir = #LIGHT_DIR_FUNCTION;
+  
 		vec3 color = #COLOR_FUNCTION;
 		if(distance > MAX_DIST) {
 			color = #SKY_COLOR_FUNCTION;
