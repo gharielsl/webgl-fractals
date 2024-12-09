@@ -1,6 +1,6 @@
 let iterations = 7;
-let power = 10;
-let bailout = 50;
+let power = 8;
+let bailout = 10;
 let colorIterations = 3;
 
 function setIterations(itr) {
@@ -47,16 +47,19 @@ function updateFractalGLSL() {
 				break;
 			float theta = acos(z.z/r);
 			float phi = atan(z.y,z.x);
-			dr =  pow( r, ${power.toFixed(5)} - 1.0 ) * ${power.toFixed(5)} * dr + 1.0;
+			dr = pow( r, ${power.toFixed(5)} - 1.0 ) * ${power.toFixed(5)} * dr + 1.0;
 			float zr = pow(r, ${power.toFixed(5)});
 			theta = theta * ${power.toFixed(5)};
 			phi = phi * ${power.toFixed(5)};
-			z = zr * vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+			z = zr * vec3(
+				sin(theta)*cos(phi), 
+				sin(phi)*sin(theta), 
+				cos(theta));
 			z += position;
 			if (i < ${colorIterations} && !isLight) 
 				orbitTrap = min(orbitTrap, abs(vec4(z.x, z.y, z.z, r*r)));
 		}
-		return 0.5*log(r)*r/dr;
+		return 0.5*0.5*log(r)*r/dr;
 	}
 `;
 
