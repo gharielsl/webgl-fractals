@@ -105,6 +105,8 @@ void main() {
 		float distance = rayMarch(reflection > 0 ? cameraPos + normal * (1.5 * minDistance) : cameraPos, rayDir, false, reflection);
 		cameraPos += rayDir * distance;
 		float diffuse = getLight(cameraPos, reflection);
+  		vec3 lightPos = #LIGHT_FUNCTION;
+		vec3 lightDir = #LIGHT_DIR_FUNCTION;
 		vec3 color = #COLOR_FUNCTION;
 		if(distance > MAX_DIST) {
 			color = #SKY_COLOR_FUNCTION;
@@ -114,7 +116,6 @@ void main() {
 			color = #SKY_COLOR_FUNCTION;
 			if(reflection == 0) isFirstSky = true;
 		}
-		
 		if(reflection > 0 && !isFirstSky) fragColor = mix(fragColor, color, #REFLECTNESS);
 		else if(reflection > 0);
 		else fragColor = color;
